@@ -1,15 +1,17 @@
 # Box2D Amalgamate
 \
-This project is based on [Box2D](https://github.com/erincatto/box2d) and [fpm](https://github.com/MikeLankamp/fpm).
+This project is based on [Box2D](https://github.com/erincatto/box2d).
 To build a customized amalgamate of Box2D, simply copy Amalgamate.bat (and fp.h) into Box2D root directory and run it.
 
 To make use of fixed point arithmetic, build Box2D with `fixed_point_support=1` (see Amalgamate.bat) and define `BOX2D_USE_FIXED_POINT` in your header file.
 
 
 ### Fixed point arithmetics support
-There is no use of `float` nor `double` anywhere in Box2D and FPM. 
+There is no use of `float` nor `double` anywhere in Box2D.
 \
-Underlying `FixedPoint` type is implemented as signed Q32_32 with special `inf` value support. As oposed to fpm, which does not handle overflow in any way, `FixedPoint`
+If you wish to use faster and more precise arithmetics, `USE_FPM` and provide [fpm](https://github.com/MikeLankamp/fpm) to be used instead of provided arithmetics.
+\
+Underlying `FixedPoint` type is implemented as signed Q32_32 with special `inf` value support. As opposed to fpm, which does not handle overflow in any way, `FixedPoint`
 has custom `Overflow` method (and others, such as `DivideByZero`, `NegativeSqrt`, `UndefinedAtan2`). Default overflow behavior is to return `inf`.
 \
 To construct `FixedPoint` you can use `FixedPointValue<X, Y>`, where `X` is the whole-number part and `Y` is decimal part in reversed decimal order.
