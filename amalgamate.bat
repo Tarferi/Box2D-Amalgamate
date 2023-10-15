@@ -4,6 +4,9 @@
 
 @rem -- Config --
 set output_file=box2d.h
+set fixed_point_support=1
+set fixed_point_support_external=0
+set fp_file=fp.h
 
 
 if "%~1" == "echo_headers" goto echo_headers
@@ -13,12 +16,29 @@ echo //>>%output_file%
 echo //>>%output_file%
 echo // Usage: Include this header file and in one source file define BOX2D_IMPL for implementation>>%output_file%
 echo // To adjust included libraries and headers, define BOX2D_NO_INCLUDES>>%output_file%
+echo // To exclude b2_Timer class (and define your own), define BOX2D_NO_TIMER>>%output_file%
 echo.>>%output_file%
 echo.>>%output_file%
 echo #ifndef BOX2D_NO_INCLUDES>>%output_file%
 for /f %%a in ('call "%~0" echo_headers') do call :process_file 0 "%%a"
+echo #ifdef BOX2D_IMPL>>%output_file%
 for /f %%a in ('call "%~0" echo_sources') do call :process_file 0 "%%a"
 echo #endif>>%output_file%
+echo #endif>>%output_file%
+
+if "%fixed_point_support%"=="1" (
+	echo.>>%output_file%
+	echo.>>%output_file%
+	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_HEADERS_BEGIN" "%fp_file%"') do set head_begin=%%a
+	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_HEADERS_END" "%fp_file%"') do set head_end=%%a
+)
+if "%fixed_point_support%"=="1" echo #ifndef BOX2D_FP_SUPPORT_H>>%output_file%
+if "%fixed_point_support%"=="1" echo #define BOX2D_FP_SUPPORT_H>>%output_file%
+if "%fixed_point_support%"=="1" set /a head_begin=%head_begin%-1
+if "%fixed_point_support%"=="1" set /a head_len=%head_end%-%head_begin%
+if "%fixed_point_support%"=="1" if "%fixed_point_support_external%"=="0" powershell -Command "& { Get-Content "%fp_file%" | Select-Object -Skip %head_begin% -First %head_len% }" >> %output_file%
+if "%fixed_point_support%"=="1" echo #endif >>%output_file%
+
 echo.>>%output_file%
 echo.>>%output_file%
 echo #ifndef BOX2D_INCLUDES_ONLY>>%output_file%
@@ -26,8 +46,32 @@ for /f %%a in ('call "%~0" echo_headers') do call :process_file 1 "%%a"
 call :process_file "test.txt"
 echo #ifdef BOX2D_IMPL>>%output_file%
 for /f %%a in ('call "%~0" echo_sources') do call :process_file 1 "%%a"
+
+
+if "%fixed_point_support%"=="1" (
+	echo.>>%output_file%
+	echo.>>%output_file%
+	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_IMPL_BEGIN" "%fp_file%"') do set impl_begin=%%a
+	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_IMPL_END" "%fp_file%"') do set impl_end=%%a
+)
+if "%fixed_point_support%"=="1" set /a impl_begin=%impl_begin%-1
+if "%fixed_point_support%"=="1" set /a impl_len=%impl_end%-%impl_begin%
+if "%fixed_point_support%"=="1" if "%fixed_point_support_external%"=="0" powershell -Command "& { Get-Content "%fp_file%" | Select-Object -Skip %impl_begin% -First %impl_len% }" >> %output_file%
+
 echo #endif>>%output_file%
 echo #endif>>%output_file%
+
+if "%fixed_point_support%"=="1" (
+@rem replace floating point constants
+@rem fixes
+	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '1e-3f','0.001f'} | Set-Content .\%output_file% }"
+	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace 'dt == 0.0','dt == 0.0f'} | Set-Content .\%output_file% }"
+	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace 'float iB = 0.;','float iB = 0.0f;'} | Set-Content .\%output_file% }"
+@rem main replacement
+	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '(\d+)(\.)(0*)(\d+)(f)','F_CONST($1, F_INVERSE($4, \"$3$4\"), $1.$3$4f)'} | Set-Content .\%output_file% }"
+
+)
+
 goto :EOF
 
 
@@ -36,6 +80,9 @@ set action=%1
 set f=%~2
 if "%f%" == "" goto :EOF
 echo %f%
+if "%f%" == "include\box2d\b2_timer.h" echo #ifndef BOX2D_NO_TIMER >>%output_file%
+if "%f%" == "src\common\b2_timer.cpp" echo #ifndef BOX2D_NO_TIMER >>%output_file%
+
 if %action%==0 (
 	for /f "tokens=*" %%a in ('findstr /C:"#include " /B "%CD%\%f%"') do call :process_file_line "%%a" 2>NUL
 ) else if %action%==1 (
@@ -48,6 +95,9 @@ if %action%==1 (
 	echo.>>%output_file%
 	echo.>>%output_file%
 )
+if "%f%" == "include\box2d\b2_timer.h" echo #endif >>%output_file%
+if "%f%" == "src\common\b2_timer.cpp" echo #endif >>%output_file%
+
 goto :EOF
 
 
