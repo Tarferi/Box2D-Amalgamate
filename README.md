@@ -32,7 +32,19 @@ FixedPoint value(x);
 value /= FixedPointValue<100, 0>;
 ```
 
-
 To convert from `FixedPoint` use `GetWholeValue` method.
+
+### Limitations
+
+#### Arithmetics
+Lowest representable value is roughly `-4294967295.99999999976716935634613037109375`.\
+Highest representable value is roughly `4294967295.99999999976716935634613037109375`.\
+Smallest representable value is roughly `0.00000000023283064365386962890625`.\
+Overflowing lowest/highest values calls for `Overflow` method and generates `Inf` value.
+Default behavior for overflow situation is to cause null pointer dereference.
+
+#### Box2D compromises
+Using fixed point arithmetics disables b2Dump method.
+
 
 **This project is by no way production ready.**
