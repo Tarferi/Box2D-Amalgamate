@@ -67,8 +67,12 @@ if "%fixed_point_support%"=="1" (
 	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '1e-3f','0.001f'} | Set-Content .\%output_file% }"
 	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace 'dt == 0.0','dt == 0.0f'} | Set-Content .\%output_file% }"
 	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace 'float iB = 0.;','float iB = 0.0f;'} | Set-Content .\%output_file% }"
+
 @rem main replacement
 	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '(\d+)(\.)(0*)(\d+)(f)','F_CONST($1, F_INVERSE($4, \"$3$4\"), $1.$3$4f)'} | Set-Content .\%output_file% }"
+
+@rem replace dump function
+	powershell -Command "& { (Get-Content .\box2d.h) | Foreach-Object {$_ -replace 'void b2Dump\(const char\* string','void b2Dump_unused(const char* string'} | Set-Content .\box2d.h }"
 
 )
 

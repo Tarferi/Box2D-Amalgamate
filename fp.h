@@ -1,6 +1,6 @@
 #pragma once
 #define BOX2D_USE_FIXED_POINT
-#define BOX2D_EXTERNAL
+//#define BOX2D_EXTERNAL
 
 #ifdef BOX2D_USE_FIXED_POINT
 #define BOX2D_NO_TIMER
@@ -1051,7 +1051,7 @@ namespace fpm {
 	template <typename B, typename I, unsigned int F, bool R>
 	inline fixed<B, I, F, R> cos(fixed<B, I, F, R> x) noexcept {
 		using Fixed = fixed<B, I, F>;
-		if (x > Fixed(0)) {  // Prevent an overflow due to the addition of pi/2
+		if (x > Fixed(0)) {  // Prevent an overflow due to the addition of PI/2
 			return sin(x - (Fixed::two_pi() - Fixed::half_pi()));
 		} else {
 			return sin(Fixed::half_pi() + x);
@@ -1425,7 +1425,7 @@ private:
 
 class FixedPoint {
 
-	template<const FPUint32 left, const FPUint32 right, const bool negative = false, const FPUint8 extraType = 0, const FPUint64 extraValue = 0>
+	template<const FPUint32 left, const FPUint32 right, const bool negative, const FPUint8 extraType, const FPUint64 extraValue>
 	friend class FixedPointValue;
 
 	template<const FPInt32 nominator, const FPInt32 denominator>
@@ -1439,27 +1439,27 @@ class FixedPoint {
 	constexpr FixedPoint(bool inf, bool negative) : inf(true), negative(negative), value(0) {
 	}
 
-	static constexpr void Overflow() {
+	static void Overflow() {
 		Crash();
 		return;
 	}
 	
-	static constexpr void DivideByZero() {
+	static void DivideByZero() {
 		Crash();
 		return;
 	}
 
-	static constexpr void NegativeSqrt() {
+	static void NegativeSqrt() {
 		Crash();
 		return;
 	}
 
-	static constexpr void UndefinedAtan2() {
+	static void UndefinedAtan2() {
 		Crash();
 		return;
 	}
 
-	static constexpr void Crash() {
+	static void Crash() {
 		((FPUint64*)0)[0] = 0;
 	}
 
@@ -1734,7 +1734,7 @@ private:
 
 };
 
-template<const FPUint32 left, const FPUint32 right, const bool negative, const FPUint8 extraType, const FPUint64 extraValue>
+template<const FPUint32 left, const FPUint32 right, const bool negative=false, const FPUint8 extraType=0, const FPUint64 extraValue=0>
 class FixedPointValue {
 
 	using FPT = FixedPoint::FPT;
@@ -1959,21 +1959,51 @@ constexpr FixedPoint FixedPoint::atan2(FixedPoint fp, FixedPoint fp2) {
 
 constexpr void FixedPoint::PrintValue(char* buffer, const FPUint32 bufferSize_) const {
 	FPUint32 bufferSize = bufferSize_;
-	if (negative) {
-		sprintf_s(buffer, bufferSize, "-");
-		if (bufferSize > 0) {
-			bufferSize--;
+	struct tmp {
+		char** buffer;
+		FPUint32* bufferSize;
+		void(*Append)(struct tmp&, char);
+	} tmpI{ &buffer, &bufferSize, nullptr };
+
+	if (bufferSize > 0) {
+		buffer[0] = 0;
+	}
+
+	void(*Append)(struct tmp&, char) = [](struct tmp& tmpI, char c) {
+		char*& buffer = *tmpI.buffer;
+		FPUint32& bufferSize = *tmpI.bufferSize;
+
+		if (bufferSize > 1) {
+			buffer[0] = c;
 			buffer = &(buffer[1]);
+			bufferSize--;
+			buffer[0] = 0;
 		}
+	};
+	tmpI.Append = Append;
+
+	void(*CopyBuffer)(struct tmp&, char*, const FPUint32) = [](struct tmp& tmpI, char* data, const FPUint32 dataSize) {
+		for (FPUint32 i = 0; i < dataSize; i++) {
+			if (data[i] == 0) {
+				break;
+			}
+			tmpI.Append(tmpI, data[i]);
+		}
+	};
+	
+	if (negative) {
+		Append(tmpI, '-');
 	}
 	if (inf) {
-		sprintf_s(buffer, bufferSize, "Inf");
+		Append(tmpI, 'I');
+		Append(tmpI, 'n');
+		Append(tmpI, 'f');
 		return;
 	}
 
 	//static_assert(FLT_MAX + FLT_EPSILON == FLT_MIN, "Invalid limit values");
 
-	auto GetDigit = [](FixedPoint& fp) {
+	char(*GetDigit)(FixedPoint&) = [](FixedPoint& fp) {
 		if (fp >= F_VALUE(9, 0)) {
 			return '9';
 		} else if (fp >= F_VALUE(8, 0)) {
@@ -2002,7 +2032,7 @@ constexpr void FixedPoint::PrintValue(char* buffer, const FPUint32 bufferSize_) 
 	if (low.BelowZero()) {
 		low = -low;
 	}
-	char highBuffer[64];
+	char highBuffer[64] = {};
 	highBuffer[0] = '0';
 	highBuffer[1] = 0;
 	FPUint32 chigh = static_cast<FPUint32>(high.value);
@@ -2020,7 +2050,7 @@ constexpr void FixedPoint::PrintValue(char* buffer, const FPUint32 bufferSize_) 
 		highBuffer[digits - (i + 1)] = tmp;
 	}
 
-	char lowBuffer[64];
+	char lowBuffer[64] = {};
 	lowBuffer[0] = '0';
 	lowBuffer[1] = 0;
 	for (FPUint32 i = 0; i < sizeof(lowBuffer) - 2 && !low.IsZero(); i++) {
@@ -2036,7 +2066,9 @@ constexpr void FixedPoint::PrintValue(char* buffer, const FPUint32 bufferSize_) 
 			}
 		}
 	}
-	sprintf_s(buffer, bufferSize, "%s.%s", highBuffer, lowBuffer);
+	CopyBuffer(tmpI, highBuffer, sizeof(highBuffer));
+	Append(tmpI, '.');
+	CopyBuffer(tmpI, lowBuffer, sizeof(lowBuffer));
 }
 
 #pragma push_macro("float")
@@ -2074,6 +2106,20 @@ constexpr void FixedPoint::PrintValue(char* buffer, const FPUint32 bufferSize_) 
 #pragma push_macro("isfinite")
 #ifdef isfinite
 #undef isfinite
+#endif
+#pragma push_macro("vfprintf")
+#ifdef vfprintf
+#undef vfprintf
+#endif
+
+template<typename... T>
+void b2Dump(const char* _string, T... vals);
+
+#ifdef BOX2D_IMPL
+template<typename... T>
+void b2Dump(const char* _string, T... vals) {
+
+}
 #endif
 
 #define float FixedPoint
@@ -2173,6 +2219,7 @@ public:
 // Restore defined macros
 
 #ifdef BOX2D_USE_FIXED_POINT
+#pragma pop_macro("vfprintf")
 #pragma pop_macro("isfinite")
 #pragma pop_macro("atan2f")
 #pragma pop_macro("floorf")
