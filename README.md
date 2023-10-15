@@ -25,3 +25,5 @@ using `FixedPointFractionValue`:
 ```C++
 FixedPoint value = FixedPointFractionValue<325, 100>();
 ```
+
+**This project is by no way production ready.**
