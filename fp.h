@@ -1,13 +1,20 @@
 #pragma once
 #define BOX2D_USE_FIXED_POINT
+#define BOX2D_EXTERNAL
+
+#ifdef BOX2D_USE_FIXED_POINT
 #define BOX2D_NO_TIMER
+#endif
+
 
 #define BOX2D_INCLUDES_ONLY
 #include "lib_box2d.h"
 #undef BOX2D_INCLUDES_ONLY
 
-/*
+#ifdef BOX2D_EXTERNAL
+
 // INCLUDE_POST_HEADERS_BEGIN
+
 #ifdef BOX2D_USE_FIXED_POINT
 #include <limits>
 #include <string>
@@ -1044,7 +1051,7 @@ namespace fpm {
 	template <typename B, typename I, unsigned int F, bool R>
 	inline fixed<B, I, F, R> cos(fixed<B, I, F, R> x) noexcept {
 		using Fixed = fixed<B, I, F>;
-		if (x > Fixed(0)) {  // Prevent an overflow due to the addition of PI/2
+		if (x > Fixed(0)) {  // Prevent an overflow due to the addition of pi/2
 			return sin(x - (Fixed::two_pi() - Fixed::half_pi()));
 		} else {
 			return sin(Fixed::half_pi() + x);
@@ -1465,6 +1472,10 @@ public:
 	
 	}
 
+	explicit FixedPoint(FPInt32 value) : negative(value < 0), inf(false), value(value) {
+
+	}
+
 	static constexpr FixedPoint Inf() {
 		return FixedPoint(true, false);
 	}
@@ -1473,6 +1484,11 @@ public:
 		return FixedPoint(true, true);
 	}
 	
+	constexpr const FPUint32 GetWholeValue(bool& negative) const {
+		negative = this->negative;
+		return static_cast<FPUint32>(value);
+	}
+
 	const constexpr FixedPoint operator+(const FixedPoint& another) const {
 		if (inf || another.inf) {
 			return Inf();
@@ -2127,6 +2143,13 @@ public:
 };
 #endif
 
+
+// INCLUDE_POST_HEADERS_END
+
+#endif 
+
+// Include box2 headers/implementation
+
 #ifdef BOX2D_NO_OPEN
 #pragma push_macro("fopen")
 #ifdef fopen
@@ -2135,22 +2158,17 @@ public:
 #define fopen(...) NULL
 #endif
 
-// INCLUDE_POST_HEADERS_END
-*/
-
-// Include box2 headers/implementation
-
-
 #define BOX2D_NO_INCLUDES
 #include "lib_box2d.h"
 #undef BOX2D_NO_INCLUDES
 
-/*
-// INCLUDE_POST_IMPL_BEGIN
-
 #ifdef BOX2D_NO_OPEN
 #pragma pop_macro("fopen")
 #endif
+
+#ifdef BOX2D_EXTERNAL
+
+// INCLUDE_POST_IMPL_BEGIN
 
 // Restore defined macros
 
@@ -2177,4 +2195,5 @@ public:
 #endif
 
 // INCLUDE_POST_IMPL_END
-*/
+
+#endif

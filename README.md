@@ -25,5 +25,14 @@ using `FixedPointFractionValue`:
 ```C++
 FixedPoint value = FixedPointFractionValue<325, 100>();
 ```
+Creating runtime values: 
+```C++
+int x = 325;
+FixedPoint value(x);
+value /= FixedPointValue<100, 0>;
+```
+
+
+To convert from `FixedPoint` use `GetWholeValue` method.
 
 **This project is by no way production ready.**
