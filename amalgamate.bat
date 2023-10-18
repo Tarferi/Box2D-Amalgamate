@@ -5,7 +5,7 @@
 @rem -- Config --
 set output_file=box2d.h
 set fixed_point_support=1
-set fixed_point_support_external=0
+set fixed_point_support_external=1
 set fp_file=fp.h
 
 
@@ -31,6 +31,10 @@ if "%fixed_point_support%"=="1" (
 	echo.>>%output_file%
 	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_HEADERS_BEGIN" "%fp_file%"') do set head_begin=%%a
 	for /f "delims=:" %%a in ('findstr /n "INCLUDE_POST_HEADERS_END" "%fp_file%"') do set head_end=%%a
+
+	echo #ifndef BOX2D_USE_FIXED_POINT>>%output_file%
+	echo #define b2Dump_unused b2Dump>>%output_file%
+	echo #endif>>%output_file%
 )
 if "%fixed_point_support%"=="1" echo #ifndef BOX2D_FP_SUPPORT_H>>%output_file%
 if "%fixed_point_support%"=="1" echo #define BOX2D_FP_SUPPORT_H>>%output_file%
@@ -69,7 +73,7 @@ if "%fixed_point_support%"=="1" (
 	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace 'float iB = 0.;','float iB = 0.0f;'} | Set-Content .\%output_file% }"
 
 @rem main replacement
-	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '(\d+)(\.)(0*)(\d+)(f)','F_CONST($1, F_INVERSE($4, \"$3$4\"), $1.$3$4f)'} | Set-Content .\%output_file% }"
+	powershell -Command "& { (Get-Content .\%output_file%) | Foreach-Object {$_ -replace '(\d+)(\.)(0*)(\d+)(f)','F_CONST($1, $4, \"$3$4\", $1.$3$4f)'} | Set-Content .\%output_file% }"
 
 @rem replace dump function
 	powershell -Command "& { (Get-Content .\box2d.h) | Foreach-Object {$_ -replace 'void b2Dump\(const char\* string','void b2Dump_unused(const char* string'} | Set-Content .\box2d.h }"
