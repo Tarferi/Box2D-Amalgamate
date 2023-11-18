@@ -5,7 +5,7 @@
 @rem -- Config --
 set output_file=box2d.h
 set fixed_point_support=1
-set fixed_point_support_external=1
+set fixed_point_support_external=0
 set fp_file=fp.h
 
 
